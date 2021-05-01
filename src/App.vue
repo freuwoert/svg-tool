@@ -1,11 +1,34 @@
 <template>
     <div id="app">
-        <div class="canvas-wrapper" ref="canvasWrapper">
-            <svg class="canvas" ref="canvas">
-                <path :d="pathString" fill="#1e90ff10" stroke="#1e90ff" stroke-width="1" />
+        <div class="canvas-wrapper" ref="canvasWrapper" draggable="false">
+            <svg draggable="false" class="canvas" ref="canvas">
+                <path draggable="false" :d="pathString" fill="#1e90ff10" stroke="#1e90ff" stroke-width="1" />
             </svg>
-            <div class="point" v-for="(point, i) in points" :key="i" :style="`left: ${point.x}px; top: ${point.y}px;`"></div>
+            <div draggable="false" class="point" :class="{'focused': focusedPoint === i}" v-for="(point, i) in drawablePoints" :key="i" :style="`left: ${point.x}px; top: ${point.y}px;`" @mousedown="downOn($event, i)"></div>
         </div>
+
+        <fieldset>
+            Bounds Top: <b>{{canvas.bounds.top}}</b><br>
+            Bounds Left: <b>{{canvas.bounds.left}}</b><br>
+        </fieldset>
+        <fieldset>
+            Cursor X: <b>{{cursor.x}}</b><br>
+            Cursor Y: <b>{{cursor.y}}</b><br>
+            Canvas X: <b>{{cursor.x - canvas.bounds.left}}</b><br>
+            Canvas Y: <b>{{cursor.y - canvas.bounds.top}}</b><br>
+            Focused Point: <b>{{typeof focusedPoint !== 'object' ? focusedPoint : 'none'}}</b><br>
+        </fieldset><br>
+        <fieldset>
+            Is Grabbing: <b>{{grab.isDown}}</b><br>
+            Start X: <b>{{grab.startX}}</b><br>
+            Start Y: <b>{{grab.startY}}</b><br>
+            Current X: <b>{{grab.currentX}}</b><br>
+            Current Y: <b>{{grab.currentY}}</b><br>
+            ΔX: <b>{{grab.deltaX}}</b><br>
+            ΔY: <b>{{grab.deltaY}}</b><br><br>
+            Value Start X: <b>{{grab.value.startX}}</b><br>
+            Value Start Y: <b>{{grab.value.startY}}</b><br>
+        </fieldset>
     </div>
 </template>
 
@@ -17,8 +40,34 @@
                     {type: 'move', isAbsolute: true, x: 100, y: 100},
                     {type: 'line', isAbsolute: true, x: 300, y: 100},
                     {type: 'line', isAbsolute: true, x: 200, y: 300},
-                    {type: 'close', isAbsolute: false, x: 0, y: 0},
+                    // {type: 'close', isAbsolute: false, x: 0, y: 0},
                 ],
+
+                canvas: {
+                    bounds: {},
+                },
+
+                cursor: {
+                    x: 0,
+                    y: 0,
+                },
+
+                grab: {
+                    isDown: false,
+                    startX: 0,
+                    startY: 0,
+                    currentX: 0,
+                    currentY: 0,
+                    deltaX: 0,
+                    deltaY: 0,
+
+                    value: {
+                        startX: 0,
+                        startY: 0,
+                    },
+                },
+
+                focusedPoint: null,
             }
         },
 
@@ -28,6 +77,16 @@
 
             canvas.style.width = wrapper.offsetWidth + "px"
             canvas.style.height = wrapper.offsetHeight + "px"
+
+            this.canvas.bounds = wrapper.getBoundingClientRect()
+
+            window.addEventListener('mousemove', this.move)
+            window.addEventListener('mouseup', this.up)
+        },
+
+        beforeDestroy() {
+            window.removeEventListener('mousemove', this.move)
+            window.removeEventListener('mouseup', this.up)
         },
 
         computed: {
@@ -54,6 +113,47 @@
 
                 return path
             },
+
+            drawablePoints() {
+                return this.points.filter(e => ['move', 'line'].includes(e.type))
+            },
+        },
+
+        methods: {
+            downOn(event, point) {
+                this.focusedPoint = point
+                this.grab.isDown = true
+                this.grab.startX = event.clientX
+                this.grab.startY = event.clientY
+                this.grab.deltaX = 0
+                this.grab.deltaY = 0
+
+                this.grab.value.startX = this.points[point].x
+                this.grab.value.startY = this.points[point].y
+            },
+
+            move(event) {
+                this.cursor.x = event.clientX
+                this.cursor.y = event.clientY
+
+                if (this.grab.isDown)
+                {
+                    this.grab.currentX = event.clientX
+                    this.grab.currentY = event.clientY
+                    this.grab.deltaX = this.grab.currentX - this.grab.startX
+                    this.grab.deltaY = this.grab.currentY - this.grab.startY
+
+                    if (typeof this.focusedPoint === 'number')
+                    {
+                        this.points[this.focusedPoint].x = this.grab.value.startX + this.grab.deltaX
+                        this.points[this.focusedPoint].y = this.grab.value.startY + this.grab.deltaY
+                    }
+                }
+            },
+
+            up() {
+                this.grab.isDown = false
+            }
         },
 
         components: {}
@@ -74,6 +174,7 @@
         background: #f4f4f4
         position: relative
         margin: 50px auto
+        user-select: none
 
         .canvas
             position: absolute
@@ -81,6 +182,7 @@
             left: 50%
             transform: translate(-50%, -50%)
             pointer-events: none
+            user-select: none
 
         .point
             position: absolute
@@ -90,4 +192,8 @@
             background: white
             border: 1px solid #1e90ff
             transform: translate(-50%, -50%)
+            user-select: none
+
+            &.focused
+                background: #1e90ff
 </style>
