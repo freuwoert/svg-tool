@@ -1,13 +1,20 @@
 <template>
     <div id="app">
         <div id="header">
+            <img src="./assets/images/logo.svg" alt="ThePath Logo" id="logo">
             <div class="spacer"></div>
             <!-- <button class="action">
-                <span class="material-icons-round">file_download</span>
+                <span class="material-icons-round">undo</span>
+            </button>
+            <button class="action">
+                <span class="material-icons-round">redo</span>
             </button> -->
             <button class="action">
                 <span class="material-icons-round">code</span>
             </button>
+            <!-- <button class="action">
+                <span class="material-icons-round">file_download</span>
+            </button> -->
         </div>
 
         <div id="tools">
@@ -31,8 +38,10 @@
         <div id="layers">
             <div v-show="window.layer === 'points'">
                 <div class="point" v-for="(point, i) in points" :key="'point_layer_'+i">
-                    <span class="material-icons-round">linear_scale</span>
-                    <div class="type">{{point.type}}</div>
+                    <span class="type-icon material-icons-round">linear_scale</span>
+                    <div class="label">{{point.type}} ({{i}})</div>
+                    <button class="delete material-icons-round" @click="deletePoint(i)">delete</button>
+                    <!-- <div class="drag material-icons-round">drag_indicator</div> -->
                 </div>
             </div>
 
@@ -74,6 +83,8 @@
 </template>
 
 <script>
+    import hotkeys from 'hotkeys-js'
+
     export default {
         data() {
             return {
@@ -129,6 +140,13 @@
 
             window.addEventListener('mousemove', this.move)
             window.addEventListener('mouseup', this.up)
+
+            hotkeys('backspace, del', () => {
+                if (typeof this.focusedPoint === 'number')
+                {
+                    this.deletePoint(this.focusedPoint)
+                }
+            })
         },
 
         beforeDestroy() {
@@ -168,7 +186,7 @@
 
         methods: {
             downOn(event, point) {
-                if (this.focusedPoint === this.points.length - 1 && this.points[this.points.length - 1].type !== 'close')
+                if (this.focusedPoint === this.points.length - 1 && this.points[this.points.length - 1].type !== 'close' && point === 0 && this.points.length > 1)
                 {
                     this.points.push({type: 'close', isAbsolute: true, x: 0, y: 0})
                 }
@@ -219,7 +237,11 @@
 
             up() {
                 this.grab.isDown = false
-            }
+            },
+
+            deletePoint(point) {
+                this.points.splice(point, 1)
+            },
         },
 
         components: {}
@@ -273,6 +295,12 @@
             display: flex
             gap: 3px
 
+            #logo
+                height: 50px
+                width: 50px
+                padding: 10px
+                user-select: none
+
             .spacer
                 height: 100%
                 flex: 1
@@ -285,9 +313,16 @@
                 border: none
                 background: none
                 cursor: pointer
+                user-select: none
+
+                span
+                    opacity: 0.5
 
                 &:hover
                     color: var(--secondary)
+
+                    span
+                        opacity: 1
 
         #tools
             grid-area: tools
@@ -307,13 +342,17 @@
                 border: none
                 background: none
                 cursor: pointer
+                user-select: none
 
                 span
                     font-size: 22px !important
+                    opacity: 0.5
 
                 &:hover,
                 &.active
                     color: var(--secondary)
+                    span
+                        opacity: 1
 
         #layers
             grid-area: layers
@@ -334,11 +373,47 @@
                 display: flex
                 align-items: center
 
-                span
+                &:not(:hover)
+                    button.delete,
+                    div.drag
+                        opacity: 0
+
+                .label
+                    flex: 1
+                    user-select: none
+
+                span.type-icon
                     width: 50px
                     font-size: 20px
                     text-align: center
                     opacity: 0.5
+                    user-select: none
+
+                button.delete
+                    user-select: none
+                    font-size: 18px
+                    height: 40px
+                    width: 30px
+                    display: grid
+                    place-content: center
+                    border: none
+                    background: none
+                    opacity: 0.5
+                    cursor: pointer
+
+                    &:hover
+                        opacity: 1
+                        color: #fc5c65
+
+                div.drag
+                    user-select: none
+                    font-size: 18px
+                    height: 40px
+                    width: 30px
+                    display: grid
+                    opacity: 0.7
+                    place-content: center
+                    cursor: n-resize
 
         #canvas-wrapper
             grid-area: canvas
